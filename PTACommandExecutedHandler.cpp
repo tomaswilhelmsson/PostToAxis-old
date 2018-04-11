@@ -214,7 +214,13 @@ bool PTACommandExecutedHandler::sendFile(const std::string filePath, const std::
 	PTAPacket packet(PTA_PACKET_NGC, md5.c_str(), fileData, fileSize);
 
 	delete[] fileData;
-	socket.sendPacket(&packet);
+	if (socket.sendPacket(&packet) < 0)
+	{
+		_ui->messageBox("Failed to send packet");
+		socket.disconnect();
+		return false;
+	}
+
 	socket.disconnect();
 	/*
 	socket.connectTo(ipAddr, port);

@@ -17,7 +17,9 @@ PTASocket::~PTASocket()
 bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 {
 	fd_set fdset;
-	int err = WSAStartup(MAKEWORD(2, 2), &_wsaData);
+
+	int err;
+	err = WSAStartup(MAKEWORD(2, 2), &_wsaData);
 
 	if (err != 0)
 	{
@@ -36,8 +38,14 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 
 	// Make socket non blocking
 	int non_blocking = 1;
-	int r = ioctlsocket(_socket, FIONBIO, (u_long *)&non_blocking);
-	_ui->messageBox("setsockopt returned:\n" + getErrorString(WSAGetLastError()));
+	err = ioctlsocket(_socket, FIONBIO, (u_long *)&non_blocking);
+	
+	if (err == SOCKET_ERROR) {
+		_ui->messageBox("setsockopt returned:\n" + getErrorString(WSAGetLastError()));
+		disconnect();
+
+		return false;
+	}
 /*
 	int timeout = 10000;
 	setsockopt(_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
@@ -68,29 +76,31 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 	tv.tv_sec = 2;
 	tv.tv_usec = 0;
 
-	int rc = select(_socket + 1, NULL, &fdset, NULL, &tv);
+	int selectReturn = select(_socket + 1, NULL, &fdset, NULL, &tv);
 	int len = sizeof(int);
 
-	int lastErr;
-	switch (rc)
+	int errno;
+	switch (selectReturn)
 	{
 	case 1:
-		lastErr = WSAGetLastError();
+		errno = WSAGetLastError();
 
-		if (lastErr != 0) {
-			_ui->messageBox("select error:\n" + getErrorString(lastErr));
+		if (errno != 0) {
+			_ui->messageBox("select error:\n" + getErrorString(errno));
 			disconnect();
 			return false;
 		}
 		break;
 	case 0:
+		_ui->messageBox("Connection to server timed out! (Server running?)");
+		disconnect();
 		return false;
 		break;
 	}
-
+	/*
 	non_blocking = 0;
 	setsockopt(_socket, SOL_SOCKET, FIONBIO, (char *)&non_blocking, sizeof(int));
-
+	*/
 	return true;
 }
 
@@ -111,25 +121,29 @@ int PTASocket::sendPacket(PTAPacket *packet)
 	size_t packetSize = htonl(packet->size);
 	size_t dataLen = htonl(packet->dataLen);
 
-//	::send(_socket, (char *)&packet->identifier, 4, 0);
-	send((char *)&packet->identifier, 4);
-//	::send(_socket, (char *)&packetSize, 4, 0);
-	send((char *)&packetSize, 4);
-//	::send(_socket, (char *)&packetType, 4, 0);
-	send((char *)&packetType, 4);
-//	::send(_socket, (char *)&packet->md5, 32, 0);
-	send((char *)&packet->md5, 32);
-//	::send(_socket, (char *)&dataLen, 4, 0);
-	send((char *)&dataLen, 4);
-//	::send(_socket, (char *)packet->data, packet->dataLen, 0);
-	send((char *)packet->data, packet->dataLen);
+	if (send((char *)&packet->identifier, 4) < 0)
+		return -1;
+	
+	if (send((char *)&packetSize, 4) < 0)
+		return -1;
+
+	if (send((char *)&packetType, 4) < 0)
+		return -1;
+
+	if (send((char *)&packet->md5, 32) < 0)
+		return -1;
+
+	if (send((char *)&dataLen, 4) < 0)
+		return -1;
+
+	if (send((char *)packet->data, packet->dataLen) < 0)
+		return -1;
 
 	return 1;
 }
 	
 
 int PTASocket::send(const char *buffer, int len) {
-	int s = -1;
 	if (buffer == nullptr || len < 1)
 	{
 		_ui->messageBox("buffer == nullptr ||len < 1)");
@@ -137,9 +151,10 @@ int PTASocket::send(const char *buffer, int len) {
 	}
 
 	int bytesSent = 0;
+
+	// Check if we can send the whole buffer at once.
 	while (len > 0) {
 		int sent = ::send(_socket, buffer, len, 0);
-
 		if (sent == SOCKET_ERROR)
 			return -1;
 
@@ -168,12 +183,12 @@ int PTASocket::sendFile(const char *path)
 		int sent = send(buffer, fileSize);
 
 		if (sent < 0)
-			return false;
+			return -1;
 
-		return true;
+		return sent;
 	}
 
-	return false;
+	return -1;
 }
 
 char *PTASocket::receive(int len) {
