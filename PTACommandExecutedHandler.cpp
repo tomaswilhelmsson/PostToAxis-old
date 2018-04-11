@@ -149,6 +149,11 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 		//progDialog->message("Post processing...");
 		std::string ngcFilename = postProcess(opsToPost);
 
+		if (ngcFilename.empty())
+		{
+			_ui->messageBox("postProcess failed.. Exiting..");
+			return;
+		}
 		std::string wsFilename = "";
 //		Sleep(3000);
 		//progDialog->progressValue(++progValue);
@@ -219,38 +224,6 @@ bool PTACommandExecutedHandler::sendFile(const std::string filePath, const std::
 	PTAPacket ssPacket(PTA_PACKET_SS, getMD5(workSheetPath).c_str(), fileData, fileSize);
 	socket.sendPacket(&ssPacket);
 */
-	/*
-	int result = socket.send(md5.c_str(), md5.length());
-
-	if (result < 0)
-		return false;
-
-	int len;
-	char *r = socket.receiveAll(&len);
-
-	if (r == nullptr) return false;
-
-	if (strncmp(r, "ok", 2) != 0) {
-		delete [] r;
-		return false;
-	}
-	//	_ui->messageBox("Server responded: " + std::string(r));
-	delete[] r;
-
-	socket.sendFile(filePath.c_str());
-
-	r = socket.receiveAll(&len);
-	if (r == nullptr) return false;
-
-	if (strncmp(r, "ok", 2) != 0) {
-		delete [] r;
-		return false;
-	}
-//	_ui->messageBox("Server responded: " + std::string(r));
-
-	delete [] r;
-	*/
-//	socket.disconnect();
 
 	return true;
 }
@@ -275,25 +248,13 @@ std::string PTACommandExecutedHandler::postProcess(Ptr<ObjectCollection> opsToPo
 		_ui->messageBox("Failed to create post processor input");
 
 	postInput->isOpenInEditor(false);
-/*
-	if (!_cam->checkAllToolpaths())
-	{
-		_ui->messageBox("Some toolpaths are not valid");
-		return std::string();
-	}
-	*/
-	for (Ptr<Operation> op : opsToPost)
-	{
-		_ui->messageBox("Posting: " + op->name());
-	}
+
 
 	if (!_cam->postProcess(opsToPost, postInput))
 	{
 		std::string errMsg;
 		int errorCode =_app->getLastError(&errMsg);
-		if(errorCode != GenericErrors::Ok)
-			_ui->messageBox("Failed to post mine: " + errMsg);
-
+		_ui->messageBox("Failed to post:\n" + errMsg + "(" + std::to_string(errorCode) + ")");
 		return std::string();
 	}
 
@@ -319,6 +280,9 @@ std::string PTACommandExecutedHandler::generateWorksheet(Ptr<ObjectCollection> o
 bool PTACommandExecutedHandler::generateToolpath(Ptr<Operation> op, bool askConfirmation)
 {
 	if (!op->isValid()) return false;
+
+	if (op->operationState() == OperationStates::IsValidOperationState)
+		return true;
 
 	if (op->operationState() == OperationStates::IsInvalidOperationState) {
 		if (askConfirmation) {

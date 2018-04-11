@@ -56,6 +56,7 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 
 		if (errCode != WSAEWOULDBLOCK) {
 			_ui->messageBox("connect returned:\n" + getErrorString(errCode));
+			disconnect();
 			return false;
 		}
 	}
@@ -78,6 +79,7 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 
 		if (lastErr != 0) {
 			_ui->messageBox("select error:\n" + getErrorString(lastErr));
+			disconnect();
 			return false;
 		}
 		break;
