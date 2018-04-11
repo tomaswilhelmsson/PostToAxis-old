@@ -53,7 +53,7 @@ public:
 			std::string ipAddr = IniFile::getString("Settings", "IP");
 			std::string port = IniFile::getString("Settings", "PORT");
 
-			commandInputs->addTextBoxCommandInput("testText", "testText", "Test text!", 1, true);
+			//commandInputs->addTextBoxCommandInput("testText", "testText", "Test text!", 1, true);
 			commandInputs->addStringValueInput("ipInput", "IP Address: ", ipAddr.c_str());
 			commandInputs->addStringValueInput("portInput", "Port", port.c_str());
 			commandInputs->addBoolValueInput("genSetupSheet", "Generate setup sheet?", true);
@@ -176,7 +176,6 @@ extern "C" XI_EXPORT bool run(const char* context)
 	buttonControl->isPromotedByDefault(true);
 	buttonControl->isPromoted(true);
 
-	ui->messageBox("Hello addin");
 
 	return true;
 }
@@ -187,7 +186,6 @@ extern "C" XI_EXPORT bool stop(const char* context)
 	{
 		removeCommandDefinition("PostToAxis");
 		removeToolbarControl("CAMActionPanel", "PostToAxis");
-		ui->messageBox("Stop addin");
 		ui = nullptr;
 	}
 
