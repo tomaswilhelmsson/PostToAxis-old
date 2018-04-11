@@ -21,6 +21,7 @@ public:
 
 	std::string postProcess(Ptr<ObjectCollection> opsToPost);
 	std::string generateWorksheet(Ptr<ObjectCollection> opsToPost);
+	bool generateToolpath(Ptr<Operation> op, bool askConfirmation);
 
 	std::string getMD5(const std::string filePath);
 

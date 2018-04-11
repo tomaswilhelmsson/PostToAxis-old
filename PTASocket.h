@@ -57,11 +57,14 @@ public:
 	void disconnect();
 
 	int sendPacket(PTAPacket *packet);
+
 	int send(const char *buffer, int len);
 	int sendFile(const char *path);
 
 	char *receive(int len);
 	char *receiveAll(int *len);
+
+	std::string getErrorString(int errorCode);
 private:
 	WSAData _wsaData;
 	SOCKET _socket = INVALID_SOCKET;

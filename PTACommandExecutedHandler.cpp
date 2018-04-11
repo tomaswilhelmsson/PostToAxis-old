@@ -20,7 +20,7 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 	Ptr<Command> cmd = eventArgs->command();
 	Ptr<CommandInputs> cmdInputs = cmd->commandInputs();
 	int progValue = 0;
-	Ptr<ProgressDialog> progDialog = _ui->createProgressDialog();
+//	Ptr<ProgressDialog> progDialog = _ui->createProgressDialog();
 
 	Ptr<StringValueCommandInput> ipInput = cmdInputs->itemById("ipInput");
 	Ptr<StringValueCommandInput> portInput = cmdInputs->itemById("portInput");
@@ -38,11 +38,12 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 
 	_cam = Application::get()->activeDocument()->products()->itemByProductType("CAMProductType");
 
+	/*
 	if (progDialog)
 		progDialog->isBackgroundTranslucent(false);
 
 	progDialog->show("Sending data to Axis", "Percentage %p, Current value: %v, Steps: %m", 0, 3, 1);
-
+	*/
 	// Write config
 
 	Ptr<DropDownCommandInput> setupInput = cmdInputs->itemById("setupSelect");
@@ -50,10 +51,10 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 
 	if (IniFile::isOk())
 	{
-		progDialog->message("Writing config values");
+	//	progDialog->message("Writing config values");
 		IniFile::setString("Settings", "IP", ipInput->value());
 		IniFile::setString("Settings", "PORT", portInput->value());
-		progDialog->progressValue(++progValue);
+	//	progDialog->progressValue(++progValue);
 	}
 
 	if (!setupInput || !opInput)
@@ -67,7 +68,7 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 		Ptr<ObjectCollection> opsToPost = ObjectCollection::create();
 
 		Ptr<ListItem> setupSelected = setupInput->selectedItem();
-		Ptr<ListItem> opSelected = opInput->selectedItem();
+	//	Ptr<ListItem> opSelected = opInput->selectedItem();
 
 		if (!setupSelected)
 		{
@@ -75,9 +76,13 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 			return;
 		}
 
-		progDialog->message("Gathering operations...");
+		//progDialog->message("Gathering operations...");
 
-		if(opSelected)
+		int itemCount = 0;
+		for (Ptr<ListItem> listItem : opInput->listItems())
+			if (listItem->isSelected()) itemCount++;
+
+		if(itemCount > 0)
 		{
 			for (Ptr<Setup> setup : _cam->setups())
 			{
@@ -91,12 +96,15 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 							{
 								if (op->name() == opSelected->name() && op->parentSetup()->name() == setupSelected->name())
 								{
-									if (op->hasToolpath())
+									if(generateToolpath(op, true))
+									{
 										opsToPost->add(op);
-									else
-										_ui->messageBox("The toolpath \"" + op->name() + "\" has no toolpaths, skipping");
-
-									break;
+										break;
+									}
+									else {
+										_ui->messageBox("Failed to generate toolpath for: " + op->name() + "\nExiting..");
+										return;
+									}
 								}
 							}
 						}
@@ -104,13 +112,14 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 				}
 			}
 
-			progDialog->progressValue(++progValue);
+			//progDialog->progressValue(++progValue);
 		}
 		else {
 			for (Ptr<Setup> setup : _cam->setups())
 			{
 				if (setup->name() == setupSelected->name())
 				{
+					/*
 					bool isValid = true;
 
 					for (Ptr<Operation> op : setup->allOperations())
@@ -123,16 +132,26 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 
 					if (isValid)
 						opsToPost->add(setup);
+						*/
+					for (Ptr<Operation> op : setup->allOperations())
+					{
+						if (!op->isToolpathValid())
+							generateToolpath(op, true);
+
+						opsToPost->add(op);
+					}
+
+
 				}
 			}
-			progDialog->progressValue(++progValue);
+			//progDialog->progressValue(++progValue);
 		}
-		progDialog->message("Post processing...");
+		//progDialog->message("Post processing...");
 		std::string ngcFilename = postProcess(opsToPost);
 
 		std::string wsFilename = "";
 //		Sleep(3000);
-		progDialog->progressValue(++progValue);
+		//progDialog->progressValue(++progValue);
 
 		Ptr<BoolValueCommandInput> genSetupSheet = cmdInputs->itemById("genSetupSheet");
 
@@ -149,7 +168,8 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 			else
 			{
 				_ui->messageBox("Send failed");
-				goto done;
+				return;
+			//	goto done;
 			}
 		}
 		else {
@@ -163,9 +183,9 @@ void PTACommandExecutedHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 		else
 			_ui->messageBox("Send failed");
 	}
-done:
+//done:
 
-	progDialog->hide();
+	//progDialog->hide();
 }
 
 bool PTACommandExecutedHandler::sendFile(const std::string filePath, const std::string ipAddr ,const std::string port, const std::string workSheetPath)
@@ -191,12 +211,14 @@ bool PTACommandExecutedHandler::sendFile(const std::string filePath, const std::
 	delete[] fileData;
 	socket.sendPacket(&packet);
 	socket.disconnect();
+	/*
 	socket.connectTo(ipAddr, port);
 
 	fileData = getFileData(workSheetPath, &fileSize);
 
 	PTAPacket ssPacket(PTA_PACKET_SS, getMD5(workSheetPath).c_str(), fileData, fileSize);
 	socket.sendPacket(&ssPacket);
+*/
 	/*
 	int result = socket.send(md5.c_str(), md5.length());
 
@@ -228,7 +250,7 @@ bool PTACommandExecutedHandler::sendFile(const std::string filePath, const std::
 
 	delete [] r;
 	*/
-	socket.disconnect();
+//	socket.disconnect();
 
 	return true;
 }
@@ -253,11 +275,16 @@ std::string PTACommandExecutedHandler::postProcess(Ptr<ObjectCollection> opsToPo
 		_ui->messageBox("Failed to create post processor input");
 
 	postInput->isOpenInEditor(false);
-
+/*
 	if (!_cam->checkAllToolpaths())
 	{
 		_ui->messageBox("Some toolpaths are not valid");
 		return std::string();
+	}
+	*/
+	for (Ptr<Operation> op : opsToPost)
+	{
+		_ui->messageBox("Posting: " + op->name());
 	}
 
 	if (!_cam->postProcess(opsToPost, postInput))
@@ -273,6 +300,7 @@ std::string PTACommandExecutedHandler::postProcess(Ptr<ObjectCollection> opsToPo
 //	_ui->messageBox("post done");
 
 //	_cam->generateSetupSheet(opsToPost, SetupSheetFormats::HTMLFormat, outputPath);
+	_ui->messageBox(outputPath + "\\" + outputFilename + ".ngc");
 	return outputPath + "\\" + outputFilename + ".ngc";
 }
 
@@ -285,6 +313,40 @@ std::string PTACommandExecutedHandler::generateWorksheet(Ptr<ObjectCollection> o
 	_cam->generateSetupSheet(opsToPost, SetupSheetFormats::HTMLFormat, tmpFilePath, false);
 
 	return tmpFilePath + "\\" + _app->activeDocument()->name() + ".html";
+}
+
+
+bool PTACommandExecutedHandler::generateToolpath(Ptr<Operation> op, bool askConfirmation)
+{
+	if (!op->isValid()) return false;
+
+	if (op->operationState() == OperationStates::IsInvalidOperationState) {
+		if (askConfirmation) {
+			if (_ui->messageBox("Toolpath for " + op->name() + " is invalid!\nDo you want to generate the toolpath?", "Generate Toolpath", YesNoButtonType) == DialogNo)
+				return false;
+		}
+
+			Ptr<ProgressDialog> genProg = _ui->createProgressDialog();
+			genProg->show("Generating Toolpath", "Generating Toolpath", 0, 100);
+
+			_cam->generateToolpath(op);
+
+
+			while (op->isGenerating()) {
+				std::string progress = op->generatingProgress();
+				int prog = std::stoi(progress.substr(0, progress.find_last_of(".")));
+				genProg->progressValue(prog);
+				Sleep(10);
+			}
+
+			genProg->hide();
+
+			if (op->operationState() == OperationStates::IsValidOperationState)
+				return true;
+		
+	}
+
+	return false;
 }
 
 char *PTACommandExecutedHandler::getFileData(const std::string filePath, size_t *size)

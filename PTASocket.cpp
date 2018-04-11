@@ -4,7 +4,7 @@
 
 PTASocket::PTASocket()
 {
-	//	_ui = Application::get()->userInterface();
+	_ui = Application::get()->userInterface();
 }
 
 
@@ -16,6 +16,7 @@ PTASocket::~PTASocket()
 
 bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 {
+	fd_set fdset;
 	int err = WSAStartup(MAKEWORD(2, 2), &_wsaData);
 
 	if (err != 0)
@@ -33,6 +34,16 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 		return false;
 	}
 
+	// Make socket non blocking
+	int non_blocking = 1;
+	int r = ioctlsocket(_socket, FIONBIO, (u_long *)&non_blocking);
+	_ui->messageBox("setsockopt returned:\n" + getErrorString(WSAGetLastError()));
+/*
+	int timeout = 10000;
+	setsockopt(_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+	setsockopt(_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+*/
+
 	_addr.sin_family = AF_INET;
 	_addr.sin_port = htons(std::stoi(port));
 	inet_pton(AF_INET, ipAddr.c_str(), &_addr.sin_addr);
@@ -40,7 +51,43 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 	err = connect(_socket, (sockaddr *)&_addr, sizeof(sockaddr_in));
 
 	if (err == SOCKET_ERROR)
+	{
+		int errCode = WSAGetLastError();
+
+		if (errCode != WSAEWOULDBLOCK) {
+			_ui->messageBox("connect returned:\n" + getErrorString(errCode));
+			return false;
+		}
+	}
+
+	FD_ZERO(&fdset);
+	FD_SET(_socket, &fdset);
+
+	timeval tv;
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+
+	int rc = select(_socket + 1, NULL, &fdset, NULL, &tv);
+	int len = sizeof(int);
+
+	int lastErr;
+	switch (rc)
+	{
+	case 1:
+		lastErr = WSAGetLastError();
+
+		if (lastErr != 0) {
+			_ui->messageBox("select error:\n" + getErrorString(lastErr));
+			return false;
+		}
+		break;
+	case 0:
 		return false;
+		break;
+	}
+
+	non_blocking = 0;
+	setsockopt(_socket, SOL_SOCKET, FIONBIO, (char *)&non_blocking, sizeof(int));
 
 	return true;
 }
@@ -62,16 +109,22 @@ int PTASocket::sendPacket(PTAPacket *packet)
 	size_t packetSize = htonl(packet->size);
 	size_t dataLen = htonl(packet->dataLen);
 
-	::send(_socket, (char *)&packet->identifier, 4, 0);
-	::send(_socket, (char *)&packetSize, 4, 0);
-	::send(_socket, (char *)&packetType, 4, 0);
-	::send(_socket, (char *)&packet->md5, 32, 0);
-	::send(_socket, (char *)&dataLen, 4, 0);
+//	::send(_socket, (char *)&packet->identifier, 4, 0);
+	send((char *)&packet->identifier, 4);
+//	::send(_socket, (char *)&packetSize, 4, 0);
+	send((char *)&packetSize, 4);
+//	::send(_socket, (char *)&packetType, 4, 0);
+	send((char *)&packetType, 4);
+//	::send(_socket, (char *)&packet->md5, 32, 0);
+	send((char *)&packet->md5, 32);
+//	::send(_socket, (char *)&dataLen, 4, 0);
+	send((char *)&dataLen, 4);
 //	::send(_socket, (char *)packet->data, packet->dataLen, 0);
-	send(packet->data, packet->dataLen);
+	send((char *)packet->data, packet->dataLen);
 
 	return 1;
 }
+	
 
 int PTASocket::send(const char *buffer, int len) {
 	int s = -1;
@@ -199,4 +252,25 @@ char *PTASocket::receiveAll(int *len) {
 	*len = totalBytes;
 
 	return recvBuffer;
+}
+
+std::string PTASocket::getErrorString(int errorCode)
+{
+	char msgBuff[256];
+
+	msgBuff[0] = '\0';
+
+	FormatMessage(
+		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		errorCode,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		msgBuff,
+		sizeof(msgBuff),
+		NULL
+	);
+	if (!*msgBuff)
+		return std::to_string(errorCode);
+
+	return std::string(msgBuff) + "(" + std::to_string(errorCode) + ")";
 }

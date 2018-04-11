@@ -7,7 +7,9 @@ PTAInputChangedHandler::PTAInputChangedHandler() : InputChangedEventHandler()
 
 	Ptr<Product> product = _app->activeDocument()->products()->itemByProductType("CAMProductType");
 
-	if (product)
+	if (!product)
+		_ui->messageBox("Could not find CAMProductTYpe");
+	else
 		_cam = product->cast<CAM>();
 }
 

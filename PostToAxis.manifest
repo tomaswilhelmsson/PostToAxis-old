@@ -1,0 +1,15 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"author":	"Tomas Wilhelmsson",
+	"description":	{
+		"":	""
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true,
+	"id":	"77e4ebb2-c17c-4c8d-99f1-2722c86bc24e",
+	"version":	"0.0.1",
+	"runOnStartup":	false,
+	"sourcewindows":	"PostToAxis.vcxproj",
+	"sourcemac":	"PostToAxis.xcodeproj"
+}
