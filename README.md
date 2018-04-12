@@ -20,3 +20,14 @@ This is very alpha, some functionality like the md5 check on server side is not 
 Worksheet sending is not implemented yet either.
 
 Hope it works and please report bugs! =)
+
+
+Added PostToAxis.dll for testing if it works like that.
+
+Folder structure in addin should be:
+AddIns\PostToAxis
+AddIns\PostToAxis.dll
+AddIns\resources
+AddIns\resources\*
+
+Hope that helps in testing it out
