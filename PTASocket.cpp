@@ -56,47 +56,51 @@ bool PTASocket::connectTo(const std::string ipAddr, const std::string port)
 	_addr.sin_port = htons(std::stoi(port));
 	inet_pton(AF_INET, ipAddr.c_str(), &_addr.sin_addr);
 
-	err = connect(_socket, (sockaddr *)&_addr, sizeof(sockaddr_in));
 
-	if (err == SOCKET_ERROR)
-	{
-		int errCode = WSAGetLastError();
 
-		if (errCode != WSAEWOULDBLOCK) {
-			_ui->messageBox("connect returned:\n" + getErrorString(errCode));
-			disconnect();
-			return false;
-		}
-	}
-
-	FD_ZERO(&fdset);
-	FD_SET(_socket, &fdset);
 
 	timeval tv;
 	tv.tv_sec = 2;
 	tv.tv_usec = 0;
 
-	int selectReturn = select(_socket + 1, NULL, &fdset, NULL, &tv);
-	int len = sizeof(int);
+	do {
+		FD_ZERO(&fdset);
+		FD_SET(_socket, &fdset);
 
-	int errno;
-	switch (selectReturn)
-	{
-	case 1:
-		errno = WSAGetLastError();
+		err = connect(_socket, (sockaddr *)&_addr, sizeof(sockaddr_in));
 
-		if (errno != 0) {
-			_ui->messageBox("select error:\n" + getErrorString(errno));
+		if (err == SOCKET_ERROR)
+		{
+			int errCode = WSAGetLastError();
+
+			if (errCode != WSAEWOULDBLOCK) {
+				_ui->messageBox("connect returned:\n" + getErrorString(errCode));
+				disconnect();
+				return false;
+			}
+		}
+
+		int selectReturn = select(_socket + 1, NULL, &fdset, NULL, &tv);
+		int len = sizeof(int);
+
+		// Connection timed out, do loop again
+		if (selectReturn == 0)
+			continue;
+
+		/* Socket error or connection attempt timed out */
+		if (selectReturn == SOCKET_ERROR)
+		{
+			errno = WSAGetLastError();
+
+			_ui->messageBox("Error\n" + getErrorString(errno));
 			disconnect();
 			return false;
 		}
-		break;
-	case 0:
-		_ui->messageBox("Connection to server timed out! (Server running?)");
-		disconnect();
-		return false;
+
+		// If code reaches here, connection has not timed out nor errored out.
 		break;
 	}
+	while (_ui->messageBox("Connection timed out. Retry connection?", "Connection attempt timed out", YesNoButtonType) != DialogNo);
 	/*
 	non_blocking = 0;
 	setsockopt(_socket, SOL_SOCKET, FIONBIO, (char *)&non_blocking, sizeof(int));
