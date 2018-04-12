@@ -21,13 +21,10 @@ Worksheet sending is not implemented yet either.
 
 Hope it works and please report bugs! =)
 
+Added installer for the addin in Setup/ptasetup.exe
 
-Added PostToAxis.dll for testing if it works like that.
+copy server from %APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\PostToAxis\Server.py to your linuxcnc computer
 
-Folder structure in addin should be:
-AddIns\PostToAxis
-AddIns\PostToAxis.dll
-AddIns\resources
-AddIns\resources\*
+Run it as "python server2.py"
 
 Hope that helps in testing it out
