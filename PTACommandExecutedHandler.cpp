@@ -348,7 +348,7 @@ std::string PTACommandExecutedHandler::getMD5(const std::string filePath)
 			std::ifstream file(filePath.c_str(), std::ifstream::binary | std::ifstream::ate);
 
 			if (file) {
-				int fileSize = file.tellg();
+				std::streamoff fileSize = file.tellg();
 				file.seekg(file.beg);
 
 				char *buffer = new char[fileSize];
