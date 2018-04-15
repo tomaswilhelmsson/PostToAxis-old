@@ -8,7 +8,7 @@
 #include "IniFile.h"
 #include "MD5.h"
 #include "PTAInputChangedHandler.h"
-#include "PTACommandExecutedHandler.h"
+#include "PTACommandEventHandler.h"
 #include "PTAInstanceHandler.h"
 
 using namespace adsk::core;
@@ -25,7 +25,6 @@ public:
 	}
 	void notify(const Ptr<CommandCreatedEventArgs> &eventArgs) override
 	{
-	
 		if (eventArgs)
 		{
 			Ptr<Command> command = eventArgs->command();
@@ -38,11 +37,12 @@ public:
 
 			PTAInputChangedHandler *inputChangedHandler = &PTAInstanceHandler_.inputChangedHandler;
 
-			exec->add(&PTAInstanceHandler_.commandExecutedHandler);
+			command->execute()->add(&PTAInstanceHandler_.commandEventHandler);
+			command->destroy()->add(&PTAInstanceHandler_.commandEventHandler);
 			command->inputChanged()->add(&PTAInstanceHandler_.inputChangedHandler);
 
 			Ptr<CommandInputs> commandInputs = command->commandInputs();
-
+			
 			if (!commandInputs)
 				return;
 
@@ -86,12 +86,16 @@ public:
 
 			Ptr<CAM> cam = product->cast<CAM>();
 
-			for (Ptr<Setup> setup : cam->setups())
+			for(int i = 0; i < cam->setups()->count(); i++)
+			{
+				Ptr<Setup> setup = cam->setups()->item(i);
+				inputChangedHandler->addList(i);
 				setupDropDown->listItems()->add(setup->name(), false);
-
+			}
+/*
 			for (Ptr<Operation> op : cam->allOperations())
 				opDropDown->listItems()->add(op->name(), false);
-
+*/
 			command->setDialogInitialSize(500, 300);
 			command->setDialogMinimumSize(500, 300);
 			command->okButtonText("Send");

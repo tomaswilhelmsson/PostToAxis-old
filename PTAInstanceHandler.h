@@ -4,7 +4,7 @@
 #include <CAM/CAMAll.h>
 
 #include "PTAInputChangedHandler.h"
-#include "PTACommandExecutedHandler.h"
+#include "PTACommandEventHandler.h"
 
 using namespace adsk::core;
 using namespace adsk::fusion;
@@ -16,7 +16,7 @@ public:
 	PTAInstanceHandler();
 
 	PTAInputChangedHandler inputChangedHandler;
-	PTACommandExecutedHandler commandExecutedHandler;
+	PTACommandEventHandler commandEventHandler;
 };
 
 extern PTAInstanceHandler PTAInstanceHandler_;

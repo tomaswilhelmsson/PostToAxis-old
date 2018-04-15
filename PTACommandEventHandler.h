@@ -11,10 +11,10 @@ using namespace adsk::core;
 using namespace adsk::fusion;
 using namespace adsk::cam;
 
-class PTACommandExecutedHandler : public CommandEventHandler
+class PTACommandEventHandler : public CommandEventHandler
 {
 public:
-	PTACommandExecutedHandler();
+	PTACommandEventHandler();
 	void notify(const Ptr<CommandEventArgs> &eventArgs) override;
 
 	bool sendFile(const std::string filePath, const std::string ipAddr, const std::string port, const std::string workSheetPath = "");

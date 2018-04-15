@@ -98,7 +98,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="PTACommandExecutedHandler.cpp" />
+    <ClCompile Include="PTACommandEventHandler.cpp" />
     <ClCompile Include="PTAInstanceHandler.cpp" />
     <ClCompile Include="PTASocket.cpp" />
   </ItemGroup>
@@ -114,7 +114,7 @@
     <ClInclude Include="PTAError.h" />
     <ClInclude Include="PTAInputChangedHandler.h" />
     <ClInclude Include="MD5.h" />
-    <ClInclude Include="PTACommandExecutedHandler.h" />
+    <ClInclude Include="PTACommandEventHandler.h" />
     <ClInclude Include="PTAInstanceHandler.h" />
     <ClInclude Include="PTASocket.h" />
   </ItemGroup>
