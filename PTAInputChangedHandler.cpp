@@ -5,16 +5,17 @@ PTAInputChangedHandler::PTAInputChangedHandler() : InputChangedEventHandler()
 	_app = Application::get();
 	_ui = _app->userInterface();
 
+}
+
+void PTAInputChangedHandler::notify(const Ptr<InputChangedEventArgs> &eventArgs)
+{
 	Ptr<Product> product = _app->activeDocument()->products()->itemByProductType("CAMProductType");
 
 	if (!product)
 		_ui->messageBox("Could not find CAMProductTYpe");
 	else
 		_cam = product->cast<CAM>();
-}
 
-void PTAInputChangedHandler::notify(const Ptr<InputChangedEventArgs> &eventArgs)
-{
 	if (eventArgs->input()->id() == "buttonClick")
 	{
 		Ptr<BoolValueCommandInput> cmdInput = eventArgs->input();
@@ -214,9 +215,11 @@ void PTAInputChangedHandler::notify(const Ptr<InputChangedEventArgs> &eventArgs)
 		}
 		*/
 	}
+	/*
 	else {
 		_ui->messageBox("PTAInputChangedHandler::notify\nUnhandled event: ", eventArgs->input()->id());
 	}
+	*/
 }
 
 void PTAInputChangedHandler::hasFile(bool value)
@@ -245,6 +248,13 @@ void PTAInputChangedHandler::addList(int index) {
 }
 
 void PTAInputChangedHandler::clearLists() {
-	_selectedIndexes[_app->activeDocument()->name()].clear();
-	_operationList[_app->activeDocument()->name()].clear();
+	if (_selectedIndexes.size() > 0) {
+		auto it = _selectedIndexes.find(_app->activeDocument()->name());
+		if (it != _selectedIndexes.end())
+			_selectedIndexes.erase(it);
+	}
+
+	if(_operationList.size() > 0)
+		if (_operationList.find(_app->activeDocument()->name()) != _operationList.end())
+			_operationList.erase(_app->activeDocument()->name());
 }

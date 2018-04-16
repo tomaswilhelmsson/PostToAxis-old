@@ -16,10 +16,10 @@ PTACommandEventHandler::PTACommandEventHandler() : CommandEventHandler()
 void PTACommandEventHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 {
 	std::string event = eventArgs->firingEvent()->name();
+	_inputChangedHandler = &PTAInstanceHandler_.inputChangedHandler;
 
 	if (event == "OnExecute")
 	{
-		_inputChangedHandler = &PTAInstanceHandler_.inputChangedHandler;
 		Ptr<Command> cmd = eventArgs->command();
 		Ptr<CommandInputs> cmdInputs = cmd->commandInputs();
 		int progValue = 0;
@@ -44,6 +44,11 @@ void PTACommandEventHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 
 		_cam = Application::get()->activeDocument()->products()->itemByProductType("CAMProductType");
 
+
+		if (!_cam) {
+			_ui->messageBox("No CAM object");
+			return;
+		}
 		/*
 		if (progDialog)
 			progDialog->isBackgroundTranslucent(false);
@@ -92,35 +97,25 @@ void PTACommandEventHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 
 			if (itemCount > 0)
 			{
-				for (Ptr<Setup> setup : _cam->setups())
-				{
-					if (setup->name() == setupSelected->name())
-					{
-						for (Ptr<ListItem> opSelected : opInput->listItems())
-						{
-							if (opSelected->isSelected())
-							{
-								opsToPost->add(_inputChangedHandler->_operationList[_app->activeDocument()->name()][setupSelected->index()][opSelected->index()]);
+				Ptr<Setup> setup = _cam->setups()->item(setupSelected->index());
+				
+				if (!setup) {
+					_ui->messageBox("No setup selected or cant find the setup selected");
+					return;
+				}
 
-								/*
-								for (Ptr<Operation> op : _cam->allOperations())
-								{
-									if (op->name() == opSelected->name() && op->parentSetup()->name() == setupSelected->name())
-									{
-										if(generateToolpath(op, true))
-										{
-											opsToPost->add(op);
-											break;
-										}
-										else {
-											_ui->messageBox("Failed to generate toolpath for: " + op->name() + "\nExiting..");
-											return;
-										}
-									}
-								}
-								*/
-							}
-						}
+				for(int i = 0; i < opInput->listItems()->count(); i++)
+				{
+					Ptr<ListItem> opSelected = opInput->listItems()->item(i);
+					Ptr<OperationBase> op = _inputChangedHandler->_operationList[_app->activeDocument()->name()][setupSelected->index()][opSelected->index()];
+
+					if (opSelected->isSelected())
+					{
+						std::string objectType = op->objectType();
+						if(objectType == "adsk::cam::Operation" || objectType == "adsk::cam::CAMPattern")
+							opsToPost->add(op);
+						else
+							continue;
 					}
 				}
 
@@ -130,10 +125,13 @@ void PTACommandEventHandler::notify(const Ptr<CommandEventArgs> &eventArgs)
 				{
 					Ptr<OperationBase> op = opsToPost->item(i);
 					
-					if (!generateToolpath(op, true))
+					if (std::string(op->objectType()) == "adsk::cam::Operation")
 					{
-						_ui->messageBox("Toolpath for \"" + op->name() + "\" is not valid, exiting");
-						return;
+						if (!generateToolpath(op, true))
+						{
+							_ui->messageBox("Toolpath for \"" + op->name() + "\" is not valid, exiting");
+							return;
+						}
 					}
 				}
 
